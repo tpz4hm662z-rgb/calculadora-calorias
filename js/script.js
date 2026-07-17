@@ -14,14 +14,18 @@
    ELEMENTOS DEL DOM
 ========================================================== */
 
-const formulario = $("#formulario");
+const formulario = $("#form-calorias");
 
-const campoSexo = $("#sexo");
+const camposSexo = $$('input[name="sexo"]');
+const campoSexoInicial = $('input[name="sexo"]');
+
 const campoEdad = $("#edad");
 const campoPeso = $("#peso");
 const campoAltura = $("#altura");
 const campoActividad = $("#actividad");
-const campoObjetivo = $("#objetivo");
+
+const camposObjetivo = $$('input[name="objetivo"]');
+const campoObjetivoInicial = $('input[name="objetivo"]');
 
 const botonCalcular =
     formulario?.querySelector('button[type="submit"]') ?? null;
@@ -50,7 +54,7 @@ function iniciarAplicacion() {
     if (!formulario) {
 
         console.error(
-            "Herramientas360: no se ha encontrado el formulario con id='formulario'."
+            "Herramientas360: no se ha encontrado el formulario con id='form-calorias'."
         );
 
         return;
@@ -109,6 +113,8 @@ async function gestionarCalculo(evento) {
 
         mostrarResultados(resultado);
 
+        actualizarResultadosComplementarios(resultado);
+
     } catch (error) {
 
         console.error(
@@ -142,7 +148,7 @@ function gestionarReinicio() {
 
         limpiarEstadoCalculo();
 
-        campoSexo?.focus();
+        campoSexoInicial?.focus();
 
     }, 0);
 
@@ -152,6 +158,21 @@ function gestionarReinicio() {
 /* ==========================================================
    OBTENCIÓN DE DATOS
 ========================================================== */
+
+/**
+ * Obtiene el radio seleccionado de un grupo.
+ *
+ * @param {string} nombre
+ * @returns {HTMLInputElement|null}
+ */
+function obtenerRadioSeleccionado(nombre) {
+
+    return document.querySelector(
+        `input[name="${nombre}"]:checked`
+    );
+
+}
+
 
 /**
  * Obtiene y normaliza los datos introducidos.
@@ -167,22 +188,36 @@ function gestionarReinicio() {
  */
 function obtenerDatosFormulario() {
 
+    const sexoSeleccionado =
+        obtenerRadioSeleccionado("sexo");
+
+    const objetivoSeleccionado =
+        obtenerRadioSeleccionado("objetivo");
+
     return {
 
-        sexo: normalizarTexto(campoSexo?.value),
+        sexo: normalizarTexto(
+            sexoSeleccionado?.value
+        ),
 
-        edad: numero(campoEdad?.value),
+        edad: numero(
+            campoEdad?.value
+        ),
 
-        peso: numero(campoPeso?.value),
+        peso: numero(
+            campoPeso?.value
+        ),
 
-        altura: numero(campoAltura?.value),
+        altura: numero(
+            campoAltura?.value
+        ),
 
         actividad: normalizarClaveActividad(
             campoActividad?.value
         ),
 
         objetivo: normalizarTexto(
-            campoObjetivo?.value
+            objetivoSeleccionado?.value
         )
 
     };
@@ -204,7 +239,8 @@ function normalizarTexto(valor) {
 
 
 /**
- * Admite algunas variantes habituales para los niveles de actividad.
+ * Convierte los valores del select de actividad
+ * en las claves utilizadas por config.js.
  *
  * @param {string} valor
  * @returns {string}
@@ -215,6 +251,20 @@ function normalizarClaveActividad(valor) {
 
     const equivalencias = {
 
+        /* Valores actuales del index.html */
+        "1.2": "sedentario",
+        "1.20": "sedentario",
+
+        "1.375": "ligero",
+
+        "1.55": "moderado",
+
+        "1.725": "intenso",
+
+        "1.9": "muyIntenso",
+        "1.90": "muyIntenso",
+
+        /* Claves compatibles para futuras versiones */
         "sedentario": "sedentario",
 
         "ligero": "ligero",
@@ -232,7 +282,7 @@ function normalizarClaveActividad(valor) {
 
     };
 
-    return equivalencias[clave] ?? clave;
+    return equivalencias[clave] ?? "";
 
 }
 
@@ -257,7 +307,7 @@ function validarDatosFormulario(datos) {
 
         return crearErrorValidacion(
             "Selecciona tu sexo.",
-            campoSexo
+            campoSexoInicial
         );
 
     }
@@ -266,7 +316,7 @@ function validarDatosFormulario(datos) {
 
         return crearErrorValidacion(
             "Selecciona una opción válida en el campo sexo.",
-            campoSexo
+            campoSexoInicial
         );
 
     }
@@ -362,7 +412,7 @@ function validarDatosFormulario(datos) {
 
         return crearErrorValidacion(
             "Selecciona un objetivo válido.",
-            campoObjetivo
+            campoObjetivoInicial
         );
 
     }
@@ -421,7 +471,8 @@ function enfocarCampo(campo) {
 ========================================================== */
 
 /**
- * Ejecuta todos los cálculos y prepara el objeto que recibe results.js.
+ * Ejecuta todos los cálculos y prepara el objeto
+ * que recibe results.js.
  *
  * @param {Object} datos
  * @returns {Object}
@@ -462,9 +513,11 @@ function calcularResultadoCompleto(datos) {
         }
     );
 
-    const ajuste = OBJETIVOS[datos.objetivo].ajuste;
+    const ajuste =
+        OBJETIVOS[datos.objetivo].ajuste;
 
-    const confianza = calcularConfianzaEstimacion(datos);
+    const confianza =
+        calcularConfianzaEstimacion(datos);
 
     return {
 
@@ -508,13 +561,8 @@ function calcularResultadoCompleto(datos) {
 
 
 /**
- * Calcula la Tasa Metabólica Basal mediante Mifflin-St Jeor.
- *
- * Hombre:
- * 10 × peso + 6,25 × altura − 5 × edad + 5
- *
- * Mujer:
- * 10 × peso + 6,25 × altura − 5 × edad − 161
+ * Calcula la Tasa Metabólica Basal mediante
+ * la fórmula Mifflin-St Jeor.
  *
  * @param {Object} datos
  * @returns {number}
@@ -592,9 +640,6 @@ function obtenerCaloriasObjetivo(objetivo, opciones) {
 /**
  * Calcula un nivel orientativo de confianza.
  *
- * No representa precisión clínica. Únicamente informa de que
- * el resultado procede de una fórmula estimativa.
- *
  * @param {Object} datos
  * @returns {{
  *   nivel: string,
@@ -661,6 +706,152 @@ function calcularConfianzaEstimacion(datos) {
 
 
 /* ==========================================================
+   INFORMACIÓN COMPLEMENTARIA DEL RESULTADO
+========================================================== */
+
+/**
+ * Actualiza los elementos de resultados que no gestiona
+ * directamente results.js.
+ *
+ * @param {Object} datos
+ */
+function actualizarResultadosComplementarios(datos) {
+
+    actualizarInterpretacion(datos);
+
+    actualizarConfianza(datos);
+
+    actualizarResumenResultado(datos);
+
+    actualizarIconoRecomendacion(datos);
+
+}
+
+
+/**
+ * Muestra una interpretación personalizada.
+ *
+ * @param {Object} datos
+ */
+function actualizarInterpretacion(datos) {
+
+    const elemento =
+        $("#resultado-interpretacion");
+
+    if (!elemento) return;
+
+    const calorias =
+        formatearNumero(datos.calorias);
+
+    const mensajes = {
+
+        perder:
+            `Para perder grasa, puedes utilizar unas ${calorias} kcal al día como punto de partida. Observa tu evolución durante varias semanas y evita déficits extremos.`,
+
+        mantener:
+            `Para mantener tu peso actual, tu ingesta orientativa es de unas ${calorias} kcal al día. El resultado puede variar según tu actividad real y tu composición corporal.`,
+
+        ganar:
+            `Para favorecer la ganancia muscular, puedes comenzar con unas ${calorias} kcal al día, acompañadas de entrenamiento de fuerza, proteína suficiente y descanso.`
+
+    };
+
+    elemento.textContent =
+        mensajes[datos.objetivo] ??
+        "Utiliza este resultado como una estimación inicial y ajústalo según tu evolución.";
+
+}
+
+
+/**
+ * Actualiza el nivel y la barra de confianza.
+ *
+ * @param {Object} datos
+ */
+function actualizarConfianza(datos) {
+
+    const nivel =
+        $("#nivel-confianza");
+
+    const barra =
+        $(".confidence__bar");
+
+    const progreso =
+        $(".confidence__bar span");
+
+    if (nivel) {
+
+        nivel.textContent =
+            datos.confianza.nivel;
+
+    }
+
+    if (barra) {
+
+        barra.setAttribute(
+            "aria-valuenow",
+            String(datos.confianza.porcentaje)
+        );
+
+    }
+
+    if (progreso) {
+
+        progreso.style.width =
+            `${datos.confianza.porcentaje}%`;
+
+    }
+
+}
+
+
+/**
+ * Actualiza el resumen superior del resultado.
+ *
+ * @param {Object} datos
+ */
+function actualizarResumenResultado(datos) {
+
+    const resumen =
+        $("#resumen-resultado");
+
+    if (!resumen) return;
+
+    resumen.textContent =
+        `Estimación calculada mediante ${datos.formula}, aplicando un factor de actividad de ${datos.factorActividad}.`;
+
+}
+
+
+/**
+ * Actualiza el icono de la recomendación.
+ *
+ * @param {Object} datos
+ */
+function actualizarIconoRecomendacion(datos) {
+
+    const icono =
+        $("#recomendacion-icono");
+
+    if (!icono) return;
+
+    const iconos = {
+
+        perder: "🔥",
+
+        mantener: "⚖️",
+
+        ganar: "💪"
+
+    };
+
+    icono.textContent =
+        iconos[datos.objetivo] ?? "✅";
+
+}
+
+
+/* ==========================================================
    ANIMACIÓN DE CÁLCULO
 ========================================================== */
 
@@ -714,7 +905,7 @@ function establecerEstadoCalculando(activo) {
         botonCalcular.dataset.textoOriginal;
 
     botonCalcular.textContent =
-        textoOriginal || "Calcular calorías";
+        textoOriginal || "Calcular mis calorías";
 
 }
 
@@ -724,7 +915,8 @@ function establecerEstadoCalculando(activo) {
  */
 function limpiarEstadoCalculo() {
 
-    const estadoCalculo = $("#estado-calculo");
+    const estadoCalculo =
+        $("#estado-calculo");
 
     if (estadoCalculo) {
 
@@ -740,11 +932,13 @@ function limpiarEstadoCalculo() {
 ========================================================== */
 
 /**
- * Oculta la sección anterior antes de realizar un cálculo nuevo.
+ * Oculta la sección anterior antes de realizar
+ * un cálculo nuevo.
  */
 function ocultarResultadosAnteriores() {
 
-    const seccionResultados = $("#resultados");
+    const seccionResultados =
+        $("#resultados");
 
     if (seccionResultados) {
 
@@ -760,7 +954,8 @@ function ocultarResultadosAnteriores() {
 ========================================================== */
 
 /**
- * Actualiza el año del footer si existe un elemento compatible.
+ * Actualiza el año del footer si existe
+ * un elemento compatible.
  */
 function actualizarAnioFooter() {
 

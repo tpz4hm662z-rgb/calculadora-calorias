@@ -158,16 +158,15 @@ function mostrarError(mensaje) {
 
 function limpiarResultados() {
 
-    const resultado = $("#resultado");
+    const resultado = $("#resultados");
 
     if (resultado) {
 
-        ocultar(resultado);
+        resultado.hidden = true;
 
     }
 
 }
-
 
 /* ==========================================================
    REINICIAR FORMULARIO
@@ -175,14 +174,13 @@ function limpiarResultados() {
 
 function reiniciarFormulario() {
 
-    const formulario = $("#formulario");
+    const formulario = $("#form-calorias");
 
     formulario.reset();
 
     limpiarResultados();
 
 }
-
 
 /* ==========================================================
    COPIAR TEXTO
